@@ -1,5 +1,8 @@
 import pandas as pd
-import MetaTrader5 as mt5
+try:
+    import MetaTrader5 as mt5
+except ImportError:
+    mt5 = None
 from core.mt5_interface import get_ohlc_data, get_symbol_info_tick, get_open_positions
 from config import TIMEFRAME_MINUTES
 from utils.logger import setup_logger

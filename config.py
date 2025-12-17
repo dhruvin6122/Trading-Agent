@@ -11,11 +11,17 @@ TIMEFRAME_STR = "M1"  # Used for log display
 TIMEFRAME = 1 # M1 Timeframe
 TIMEFRAME_MINUTES = 1 # Required for MarketAnalyzer map
 
-# Risk Management (Fixed)
-LOT_SIZE = 0.1 # Reduced from 0.5. Conservative Base.
-STOP_LOSS = 50.0   # Default Points (Fallback)
-TAKE_PROFIT = 80.0 # Default Points (Fallback)
-MAX_OPEN_TRADES = 3 # Reduced from 5 to limit exposure.
+# Risk Management (Dynamic)
+# Rule: $20k Equity = 1.0 Lot.
+# Formula: Lots = CurrentEquity / EQUITY_PER_1_LOT
+EQUITY_PER_1_LOT = 20000.0 
+MIN_LOT_GOLD = 0.20
+MIN_LOT_FOREX = 0.50
+
+# Fallback defaults
+STOP_LOSS = 50.0   
+TAKE_PROFIT = 80.0 
+MAX_OPEN_TRADES = 3
 MAGIC_NUMBER = 123456
 
 # Production Safety (Equity Guard)

@@ -27,8 +27,15 @@ STRATEGY 3: BREAKOUT CONTINUATION (Vol Expansion)
 - TRIGGER: Price closes OUTSIDE the Bands with momentum.
 - ACTION: Trade WITH the breakout.
 
+STRATEGY 4: BIG BREAKOUT (Hourly Hold)
+- REGIME: Major Support/Resistance Breach on M15/H1.
+- TRIGGER: Strong Impulse Candle.
+- ACTION: EXTENDED HOLD. Do not scap. Aim for 1-2 Hours of trend riding.
+- HINT: If you choose this, set confidence HIGH.
+
 EXIT STRATEGY: SMART PROFIT TAKING
 - CHECK: If Position PnL > 0 AND Market Structure REVERSES (e.g., M1 Candle closes back inside Bands, or Pin Bar at Resistance).
+- EXCEPTION: If Strategy was "Big Breakout", TOLERATE minor pullbacks. Do not exit early.
 - ACTION: CLOSE immediately. Do not strictly wait for TP. "Secure the bag" if momentum fades.
 
 DECISION LOGIC:

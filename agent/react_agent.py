@@ -3,7 +3,11 @@ from core.market_analyzer import MarketAnalyzer
 from core.llm_bridge import LLMBridge
 from core.order_manager import OrderManager
 from utils.logger import setup_logger
-import MetaTrader5 as mt5
+from utils.logger import setup_logger
+try:
+    import MetaTrader5 as mt5
+except ImportError:
+    mt5 = None
 from config import MAX_DAILY_DRAWDOWN_PERCENT
 from utils.logger import setup_logger
 

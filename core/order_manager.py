@@ -1,4 +1,8 @@
-import MetaTrader5 as mt5
+try:
+    import MetaTrader5 as mt5
+except ImportError:
+    mt5 = None
+
 from config import LOT_SIZE, STOP_LOSS, TAKE_PROFIT, MAGIC_NUMBER, SYMBOLS, MAX_OPEN_TRADES
 from core.mt5_interface import get_symbol_info_tick, get_open_positions
 from utils.logger import setup_logger
@@ -47,20 +51,42 @@ class OrderManager:
 
         point = mt5.symbol_info(symbol).point
         
-        # Position Sizing based on Confidence (Conservative Scaling)
-        volume = LOT_SIZE
+        point = mt5.symbol_info(symbol).point
         
-        # Moderate Confidence Scaling
-        if confidence >= 0.90:
-            volume = LOT_SIZE * 1.5
-        elif confidence >= 0.80:
-            volume = LOT_SIZE * 1.2
+        # --- DYNAMIC LOT SIZING CALCULATION ---
+        # Get Equity
+        account = mt5.account_info()
+        equity = account.equity if account else 20000.0 # Fallback
+        
+        # Base Calc: $20k -> 1.0 Lot
+        from config import EQUITY_PER_1_LOT, MIN_LOT_GOLD, MIN_LOT_FOREX
+        
+        base_lots = equity / EQUITY_PER_1_LOT
+        
+        # User defined Minimums
+        if "XAU" in symbol or "Gold" in symbol:
+            if base_lots < MIN_LOT_GOLD: base_lots = MIN_LOT_GOLD
+            # But wait, user said "Gold min .20". Does he mean ONLY Gold?
+            # "for gold minimum .20 but take accordinglt to capital for 20 k take 1 lot"
+            # And "take min .50 of 3 items" (likely the Forex pairs).
+        else:
+            if base_lots < MIN_LOT_FOREX: base_lots = MIN_LOT_FOREX
             
-        # BTC Multiplier - Removed Aggressive Double Scaling
-        # We rely on the Base Lot being set correctly in Config for the account size.
+        volume = round(base_lots, 2)
         
-        if volume > LOT_SIZE:
-             logger.info(f"Confidence Scaling: Boosting volume to {volume}")
+        # Cap volume reasonably to avoid 100 lots error
+        if volume > 10.0: volume = 10.0
+        
+        logger.info(f"Dynamic Sizing (Equity ${equity:.2f}): Calculated {volume} Lots for {symbol}")
+        # --------------------------------------
+        
+        # Moderate Confidence Scaling (On top of base)
+        if confidence >= 0.90:
+            volume = round(volume * 1.5, 2)
+        elif confidence >= 0.80:
+            volume = round(volume * 1.2, 2)
+            
+        logger.info(f"Final Volume after Confidence: {volume}")
 
         # Dynamic Risk Calculation
         # Default fallback to config if ATR is missing or 0
