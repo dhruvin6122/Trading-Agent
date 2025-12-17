@@ -47,42 +47,20 @@ class OrderManager:
 
         point = mt5.symbol_info(symbol).point
         
-        # Position Sizing based on Confidence ("PUNCH BIGGER LOT")
+        # Position Sizing based on Confidence (Conservative Scaling)
         volume = LOT_SIZE
         
-        # BTC Specific Multiplier (User Request: Double Lot for BTC)
-        if "BTC" in symbol:
-            volume = volume * 2.0
-            logger.info(f"BTC Scaling: Base volume doubled to {volume}")
-
+        # Moderate Confidence Scaling
         if confidence >= 0.90:
-            volume = 3.0 if "BTC" not in symbol else 6.0 # Scale sniper for BTC too? Or keep fixed max? 
-            # User asked for "double base", let's assume aggressive scaling applies on top or we cap it.
-            # Let's keep the user's specific "2.0/3.0" request for high confidence simple, 
-            # changing base is safer. If confidence is high, let's just stick to the specific 2.0/3.0 hard numbers 
-            # UNLESS they are smaller than the BTC base. 
-            
-            # actually, let's keep it simple: 
-            # Base = 0.5 (Gold) -> 1.0 (BTC)
-            # High Conf = 2.0 (Gold) -> 4.0 (BTC) ?? 
-            # User said "let supp you take .5 so in btc take 1".
-            # This implies a 2x multiplier on whatever the calculated lot is.
-            pass
-
-        # Apply Confidence Scaling
-        if confidence >= 0.90:
-            volume = 3.0
+            volume = LOT_SIZE * 1.5
         elif confidence >= 0.80:
-            volume = 2.0
+            volume = LOT_SIZE * 1.2
             
-        # Apply BTC Multiplier AFTER confidence or BEFORE?
-        # User: "in gold let supp you take .5 so in btc take 1"
-        # If High Conf Gold = 2.0, BTC should probably be 4.0.
-        if "BTC" in symbol:
-            volume = volume * 2.0
-
+        # BTC Multiplier - Removed Aggressive Double Scaling
+        # We rely on the Base Lot being set correctly in Config for the account size.
+        
         if volume > LOT_SIZE:
-             logger.info(f"High Confidence/BTC Scaling: Boosting volume to {volume}")
+             logger.info(f"Confidence Scaling: Boosting volume to {volume}")
 
         # Dynamic Risk Calculation
         # Default fallback to config if ATR is missing or 0
@@ -185,3 +163,85 @@ class OrderManager:
                 logger.info(f"[TRADE_RESULT] Symbol={symbol} Ticket={pos.ticket} Type={'BUY' if pos.type==mt5.ORDER_TYPE_BUY else 'SELL'} Open={pos.price_open} Close={price} Diff={diff:.5f}")
 
         return True, f"Closed {count} positions."
+
+    def manage_risk(self, symbol, atr):
+        """
+        Adjusts SL/TP for open positions:
+        1. Break Even: If Price > Entry + 0.5*ATR, move SL to Entry.
+        2. Trailing Stop: If Price > Entry + 1.0*ATR, Trail SL at 0.5*ATR distance.
+        """
+        if not atr or atr <= 0:
+            return
+            
+        positions = get_open_positions(symbol)
+        if not positions:
+            return
+
+        tick = get_symbol_info_tick(symbol)
+        if not tick: return
+        
+        point = mt5.symbol_info(symbol).point
+        be_trigger_dist = 0.5 * atr
+        trail_trigger_dist = 1.0 * atr
+        trail_dist = 0.5 * atr # Trail behind by 0.5 ATR
+
+        for pos in positions:
+            # Check for BUY
+            if pos.type == mt5.ORDER_TYPE_BUY:
+                current_profit_dist = tick.bid - pos.price_open
+                
+                # Check Break Even
+                if current_profit_dist > be_trigger_dist:
+                    new_sl = pos.price_open + (10 * point) # Entry + small buffer (spread cover)
+                    
+                    # Only modify if new SL is better than current SL
+                    if pos.sl < new_sl: # Current SL is below target (worse)
+                        # Check Trailing
+                        if current_profit_dist > trail_trigger_dist:
+                            # Trail: Price - TrailDist
+                            trail_sl = tick.bid - trail_dist
+                            if trail_sl > new_sl:
+                                new_sl = trail_sl
+                                
+                        # Execute Modification
+                        request = {
+                            "action": mt5.TRADE_ACTION_SLTP,
+                            "position": pos.ticket,
+                            "symbol": symbol,
+                            "sl": new_sl,
+                            "tp": pos.tp, # Keep TP same
+                            "magic": MAGIC_NUMBER,
+                        }
+                        res = mt5.order_send(request)
+                        if res.retcode == mt5.TRADE_RETCODE_DONE:
+                            logger.info(f"Managed Risk {symbol} #{pos.ticket}: SL moved to {new_sl} (Profit Dist: {current_profit_dist:.5f})")
+
+            # Check for SELL
+            elif pos.type == mt5.ORDER_TYPE_SELL:
+                current_profit_dist = pos.price_open - tick.ask
+                
+                # Check Break Even
+                if current_profit_dist > be_trigger_dist:
+                    new_sl = pos.price_open - (10 * point) # Entry - small buffer
+                    
+                    # For Sell, "Better" SL is LOWER price. Current SL > New SL means we tighten it down.
+                    if pos.sl == 0.0 or pos.sl > new_sl: 
+                        # Check Trailing
+                        if current_profit_dist > trail_trigger_dist:
+                            # Trail: Price + TrailDist
+                            trail_sl = tick.ask + trail_dist
+                            if trail_sl < new_sl:
+                                new_sl = trail_sl
+                                
+                        # Execute Modification
+                        request = {
+                            "action": mt5.TRADE_ACTION_SLTP,
+                            "position": pos.ticket,
+                            "symbol": symbol,
+                            "sl": new_sl,
+                            "tp": pos.tp,
+                            "magic": MAGIC_NUMBER,
+                        }
+                        res = mt5.order_send(request)
+                        if res.retcode == mt5.TRADE_RETCODE_DONE:
+                            logger.info(f"Managed Risk {symbol} #{pos.ticket}: SL moved to {new_sl} (Profit Dist: {current_profit_dist:.5f})")

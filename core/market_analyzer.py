@@ -52,7 +52,15 @@ class MarketAnalyzer:
             low_close = (df['low'] - df['close'].shift()).abs()
             ranges = pd.concat([high_low, high_close, low_close], axis=1)
             true_range = ranges.max(axis=1)
+            true_range = ranges.max(axis=1)
             df['ATR'] = true_range.rolling(14).mean()
+            
+            # RSI (14)
+            delta = df['close'].diff()
+            gain = (delta.where(delta > 0, 0)).rolling(14).mean()
+            loss = (-delta.where(delta < 0, 0)).rolling(14).mean()
+            rs = gain / loss
+            df['RSI'] = 100 - (100 / (1 + rs))
             
             # Bollinger Bands (20, 2)
             # BB_MID = EMA20 (or SMA20? Standard is SMA20) -> Using SMA20 for standard BB
@@ -67,6 +75,7 @@ class MarketAnalyzer:
             
             if tf_name == "M1":
                 last_atr_m1 = prev['ATR']
+                last_rsi_m1 = prev['RSI']
 
             # Analyze Trend
             p_vs_e20 = "Above" if prev['close'] > prev['EMA_20'] else "Below"
@@ -79,6 +88,7 @@ class MarketAnalyzer:
             analysis_str += f"""
 [{tf_name} Data]
 Close: {prev['close']}
+RSI: {prev['RSI']:.2f}
 EMA9: {prev['EMA_9']:.2f} | EMA20: {prev['EMA_20']:.2f} | EMA50: {prev['EMA_50']:.2f}
 BB: Upper={prev['BB_UPPER']:.2f} | Lower={prev['BB_LOWER']:.2f} | Width={bb_width:.2f}
 Trend: {p_vs_e20} EMA20, Structure: {e20_vs_e50}
@@ -119,6 +129,7 @@ Account/Position Status:
         return {
             "observation": observation.strip(),
             "atr": last_atr_m1, # Use M1 ATR for scalping stops
+            "rsi": last_rsi_m1,
             "current_price": current_price,
             "open_positions": positions
         }

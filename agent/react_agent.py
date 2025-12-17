@@ -60,6 +60,13 @@ class ReActTrader:
 
         observation = market_state["observation"]
         atr_value = market_state.get("atr", 0.0)
+        
+        # --- PASSIVE MANAGEMENT: Check Trailing Stops / Break Even ---
+        # We do this every cycle regardless of LLM Decision
+        if atr_value > 0:
+            self.order_manager.manage_risk(symbol, atr_value)
+        # -------------------------------------------------------------
+        
         logger.info(f"Observation:\n{observation}")
 
         # 2. Reason (Ask LLM)
@@ -68,6 +75,23 @@ class ReActTrader:
         thought = decision.get("thought", "No thought provided")
         action = decision.get("action", "HOLD")
         confidence = decision.get("confidence", 0.0)
+        
+        # --- RESILIENCY FILTER (Hard Logic Override) ---
+        # Prevent degenerate trades based on RSI extremes
+        rsi_value = market_state.get("rsi", 50.0)
+        original_action = action
+        
+        if action == "BUY" and rsi_value > 70:
+            action = "HOLD"
+            logger.warning(f"RESILIENCY FILTER: Blocked BUY on {symbol} (RSI {rsi_value:.2f} > 70 - Overbought)")
+            
+        elif action == "SELL" and rsi_value < 30:
+            action = "HOLD"
+            logger.warning(f"RESILIENCY FILTER: Blocked SELL on {symbol} (RSI {rsi_value:.2f} < 30 - Oversold)")
+            
+        if action != original_action:
+            thought += " [BLOCKED BY RSI FILTER]"
+        # -----------------------------------------------
         
         logger.info(f"Agent Thought: {thought}")
         logger.info(f"Agent Decision: {action} (Confidence: {confidence})")

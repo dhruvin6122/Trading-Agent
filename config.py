@@ -12,15 +12,14 @@ TIMEFRAME = 1 # M1 Timeframe
 TIMEFRAME_MINUTES = 1 # Required for MarketAnalyzer map
 
 # Risk Management (Fixed)
-LOT_SIZE = 0.5 # Base Lot (Scales to 2.0/3.0 on High Confidence)
+LOT_SIZE = 0.1 # Reduced from 0.5. Conservative Base.
 STOP_LOSS = 50.0   # Default Points (Fallback)
 TAKE_PROFIT = 80.0 # Default Points (Fallback)
-MAX_OPEN_TRADES = 5
-MAX_OPEN_TRADES = 5
+MAX_OPEN_TRADES = 3 # Reduced from 5 to limit exposure.
 MAGIC_NUMBER = 123456
 
 # Production Safety (Equity Guard)
-MAX_DAILY_DRAWDOWN_PERCENT = 3.0 # Hard stop if equity drops 3% from daily start
+MAX_DAILY_DRAWDOWN_PERCENT = 2.0 # Tightened to 2% (Hard Stop)
 
 # LLM Configuration
 OLLAMA_URL = "http://localhost:11434/api/generate"
