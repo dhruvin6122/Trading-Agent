@@ -4,15 +4,43 @@ import os
 import signal
 import sys
 from typing import Optional
-
-app = FastAPI(title="AI Trading Agent Control Panel")
+from contextlib import asynccontextmanager
 
 # Global process reference
 agent_process: Optional[subprocess.Popen] = None
 
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup: Launch Agent automatically
+    global agent_process
+    try:
+        if not agent_process:
+            logger_exists = os.path.exists("logs")
+            if not logger_exists: os.makedirs("logs", exist_ok=True)
+            
+            # Use sys.executable to ensure we use the same python env
+            cmd = [sys.executable, "main.py"]
+            # Start detached/background
+            agent_process = subprocess.Popen(cmd, cwd=os.getcwd())
+            print(f"AUTO-START: Agent launched with PID {agent_process.pid}")
+    except Exception as e:
+        print(f"AUTO-START FAILED: {e}")
+        
+    yield
+    
+    # Shutdown: Cleanup
+    if agent_process:
+        agent_process.terminate()
+
+app = FastAPI(title="AI Trading Agent Control Panel", lifespan=lifespan)
+
 @app.get("/")
 def read_root():
-    return {"status": "online", "message": "AI Trading Agent API is ready"}
+    return {
+        "status": "online", 
+        "message": "AI Trading Agent API is ready",
+        "agent_running": agent_process is not None and agent_process.poll() is None
+    }
 
 @app.post("/start")
 def start_agent():
