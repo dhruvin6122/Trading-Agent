@@ -14,9 +14,10 @@ async def lifespan(app: FastAPI):
     # Startup: Launch Agent automatically
     global agent_process
     try:
+    try:
         if not agent_process:
-            logger_exists = os.path.exists("logs")
-            if not logger_exists: os.makedirs("logs", exist_ok=True)
+            # Logs created by main.py/config.py, no need to force here
+            # But we can verify permission? No, just run.
             
             # Use sys.executable to ensure we use the same python env
             cmd = [sys.executable, "main.py"]
@@ -87,12 +88,12 @@ def get_status():
 
 @app.get("/logs")
 def get_logs(lines: int = 50):
-    log_path = os.path.join("logs", "trading_agent.log")
-    if not os.path.exists(log_path):
+    from config import LOG_FILE
+    if not os.path.exists(LOG_FILE):
         return {"logs": []}
     
     try:
-        with open(log_path, "r") as f:
+        with open(LOG_FILE, "r") as f:
             # Efficiently read last N lines
             all_lines = f.readlines()
             return {"logs": all_lines[-lines:]}
@@ -101,8 +102,10 @@ def get_logs(lines: int = 50):
 
 @app.get("/stats")
 def get_stats():
-    log_path = os.path.join("logs", "trading_agent.log")
-    if not os.path.exists(log_path):
+@app.get("/stats")
+def get_stats():
+    from config import LOG_FILE
+    if not os.path.exists(LOG_FILE):
         return {"error": "No logs found"}
     
     total_trades = 0

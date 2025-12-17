@@ -33,6 +33,12 @@ MODEL_NAME = "deepseek-v3.1:671b-cloud"
 TEMPERATURE = 0.0
 
 # Logging
-LOG_DIR = os.path.join(os.path.dirname(__file__), "logs")
+# Check if running on Vercel/Linux (Read-Only FS)
+if os.name == 'nt':
+    LOG_DIR = os.path.join(os.path.dirname(__file__), "logs")
+else:
+    # On Serverless/Linux, ONLY /tmp is writable
+    LOG_DIR = "/tmp/logs"
+
 os.makedirs(LOG_DIR, exist_ok=True)
 LOG_FILE = os.path.join(LOG_DIR, "trading_agent.log")
