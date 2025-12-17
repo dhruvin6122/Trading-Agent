@@ -14,7 +14,7 @@ async def lifespan(app: FastAPI):
     # Startup: Launch Agent automatically
     global agent_process
     try:
-    try:
+
         if not agent_process:
             # Logs created by main.py/config.py, no need to force here
             # But we can verify permission? No, just run.
@@ -100,10 +100,7 @@ def get_logs(lines: int = 50):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error reading logs: {str(e)}")
 
-@app.get("/stats")
-def get_stats():
-@app.get("/stats")
-def get_stats():
+
     from config import LOG_FILE
     if not os.path.exists(LOG_FILE):
         return {"error": "No logs found"}
@@ -113,7 +110,7 @@ def get_stats():
     losses = 0
     
     try:
-        with open(log_path, "r") as f:
+        with open(LOG_FILE, "r") as f:
             for line in f:
                 if "[TRADE_RESULT]" in line:
                     total_trades += 1
