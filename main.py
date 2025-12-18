@@ -3,7 +3,7 @@ import schedule
 import sys
 from config import SYMBOLS
 from core.mt5_interface import initialize_mt5, shutdown_mt5
-from agent.react_agent import ReActTrader
+from agent.rule_scalper import RuleBasedScalper
 from utils.logger import setup_logger
 
 logger = setup_logger("Main")
@@ -16,11 +16,11 @@ if __name__ == "__main__":
         sys.exit(1)
 
     try:
-        agent = ReActTrader(SYMBOLS)
+        logger.info("Starting Rule-Based Scalper (No AI Model)...")
+        agent = RuleBasedScalper(SYMBOLS)
         
         # Schedule the job to run every minute (or 5 minutes based on candle close)
-        # For simplicity in this demo, we run every 1 minute to check conditions often.
-        # In production, might want to sync with candle closes.
+        # We run M1 check.
         schedule.every(1).minutes.do(job)
         
         logger.info("Agent started. Running schedule...")

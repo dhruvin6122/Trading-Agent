@@ -6,31 +6,24 @@ import os
 MT5_PATH = None 
 
 # Trading Parameters
-SYMBOLS = ["XAUUSD+", "BTCUSD", "EURUSD+", "USDJPY+", "GBPUSD+", "GBPJPY+", "US30+"]
-TIMEFRAME_STR = "M1"  # Used for log display
-TIMEFRAME = 1 # M1 Timeframe
-TIMEFRAME_MINUTES = 1 # Required for MarketAnalyzer map
+SYMBOLS = ["XAUUSD", "BTCUSD"] # Exact symbols as requested
+TIMEFRAME_STR = "M1"  
+TIMEFRAME = 1 
+TIMEFRAME_MINUTES = 1 # Restoring required variable 
 
-# Risk Management (Dynamic)
-# Rule: $20k Equity = 1.0 Lot.
-# Formula: Lots = CurrentEquity / EQUITY_PER_1_LOT
-EQUITY_PER_1_LOT = 20000.0 
-MIN_LOT_GOLD = 0.20
-MIN_LOT_FOREX = 0.50
+# Risk Management
+# User Request: Fixed 5.0 Lots. No Dynamic Sizing.
+USE_DYNAMIC_SIZING = False
+LOT_SIZE = 2.0
+MAX_OPEN_TRADES = 1 # Max 1 per symbol as requested
 
 # Fallback defaults
 STOP_LOSS = 50.0   
 TAKE_PROFIT = 80.0 
-MAX_OPEN_TRADES = 3
 MAGIC_NUMBER = 123456
 
 # Production Safety (Equity Guard)
-MAX_DAILY_DRAWDOWN_PERCENT = 2.0 # Tightened to 2% (Hard Stop)
-
-# LLM Configuration
-OLLAMA_URL = "http://localhost:11434/api/generate"
-MODEL_NAME = "deepseek-v3.1:671b-cloud"
-TEMPERATURE = 0.0
+MAX_DAILY_DRAWDOWN_PERCENT = 10.0 # Increased to 10% to allow 5-Lot volatility.
 
 # Logging
 # Check if running on Vercel/Linux (Read-Only FS)

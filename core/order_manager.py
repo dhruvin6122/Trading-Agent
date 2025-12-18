@@ -3,7 +3,7 @@ try:
 except ImportError:
     mt5 = None
 
-from config import LOT_SIZE, STOP_LOSS, TAKE_PROFIT, MAGIC_NUMBER, SYMBOLS, MAX_OPEN_TRADES
+from config import STOP_LOSS, TAKE_PROFIT, MAGIC_NUMBER, SYMBOLS, MAX_OPEN_TRADES
 from core.mt5_interface import get_symbol_info_tick, get_open_positions
 from utils.logger import setup_logger
 
@@ -53,40 +53,34 @@ class OrderManager:
         
         point = mt5.symbol_info(symbol).point
         
-        # --- DYNAMIC LOT SIZING CALCULATION ---
-        # Get Equity
-        account = mt5.account_info()
-        equity = account.equity if account else 20000.0 # Fallback
+        # --- LOT SIZING ---
+        from config import USE_DYNAMIC_SIZING, LOT_SIZE
         
-        # Base Calc: $20k -> 1.0 Lot
-        from config import EQUITY_PER_1_LOT, MIN_LOT_GOLD, MIN_LOT_FOREX
-        
-        base_lots = equity / EQUITY_PER_1_LOT
-        
-        # User defined Minimums
-        if "XAU" in symbol or "Gold" in symbol:
-            if base_lots < MIN_LOT_GOLD: base_lots = MIN_LOT_GOLD
-            # But wait, user said "Gold min .20". Does he mean ONLY Gold?
-            # "for gold minimum .20 but take accordinglt to capital for 20 k take 1 lot"
-            # And "take min .50 of 3 items" (likely the Forex pairs).
+        if USE_DYNAMIC_SIZING:
+            # --- DYNAMIC LOT SIZING CALCULATION ---
+            # Get Equity
+            account = mt5.account_info()
+            equity = account.equity if account else 20000.0 # Fallback
+            
+            # Base Calc: $20k -> 1.0 Lot
+            from config import EQUITY_PER_1_LOT, MIN_LOT_GOLD, MIN_LOT_FOREX
+            
+            base_lots = equity / EQUITY_PER_1_LOT
+            
+            # User defined Minimums
+            if "XAU" in symbol or "Gold" in symbol:
+                if base_lots < MIN_LOT_GOLD: base_lots = MIN_LOT_GOLD
+            else:
+                if base_lots < MIN_LOT_FOREX: base_lots = MIN_LOT_FOREX
+                
+            volume = round(base_lots, 2)
+            if volume > 10.0: volume = 10.0
+            logger.info(f"Dynamic Sizing (Equity ${equity:.2f}): Calculated {volume} Lots for {symbol}")
         else:
-            if base_lots < MIN_LOT_FOREX: base_lots = MIN_LOT_FOREX
-            
-        volume = round(base_lots, 2)
-        
-        # Cap volume reasonably to avoid 100 lots error
-        if volume > 10.0: volume = 10.0
-        
-        logger.info(f"Dynamic Sizing (Equity ${equity:.2f}): Calculated {volume} Lots for {symbol}")
+            # FIXED SIZING
+            volume = LOT_SIZE
+            logger.info(f"Fixed Sizing: Using {volume} Lots for {symbol}")
         # --------------------------------------
-        
-        # Moderate Confidence Scaling (On top of base)
-        if confidence >= 0.90:
-            volume = round(volume * 1.5, 2)
-        elif confidence >= 0.80:
-            volume = round(volume * 1.2, 2)
-            
-        logger.info(f"Final Volume after Confidence: {volume}")
 
         # Dynamic Risk Calculation
         # Default fallback to config if ATR is missing or 0
